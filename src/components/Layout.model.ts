@@ -1,9 +1,11 @@
 import { Item, Margin, Subscription } from "@/interfaces";
 import { DashItem } from "./DashItem.model";
 
+// noinspection InfiniteRecursionJS
 export class Layout {
   private _breakpoint: string;
   private _breakpointWidth: number | undefined;
+  private _debug: boolean;
   private _margin: Margin;
   private _width: number;
   private _height: number;
@@ -19,7 +21,7 @@ export class Layout {
   private _useCssTransforms: boolean;
   private _itemBeingDragged: boolean = false;
   private _itemBeingResized: boolean = false;
-  private _initalItemIds: Array<number | string> = [];
+  private _initialItemIds: Array<number | string> = [];
   private _dashItems: DashItem[] = [];
   private _dragStartListeners: Subscription[] = [];
   private _dragListeners: Subscription[] = [];
@@ -45,6 +47,7 @@ export class Layout {
     maxColWidth,
     compact,
     initialItems,
+    debug,
   }: {
     breakpoint: string;
     numberOfCols: number;
@@ -62,7 +65,9 @@ export class Layout {
     maxColWidth?: number | boolean;
     compact?: boolean;
     initialItems?: Item[];
+    debug?: boolean;
   }) {
+    this._debug = debug ?? false;
     this._breakpoint = breakpoint;
     this._numberOfCols = numberOfCols;
 
@@ -142,10 +147,16 @@ export class Layout {
     }
 
     if (typeof initialItems !== "undefined") {
-      this._initalItemIds = initialItems.map((item) => {
+      this._initialItemIds = initialItems.map((item) => {
         return item.id;
       });
     }
+  }
+  get debug() {
+    return this._debug;
+  }
+  set debug(d: boolean) {
+    this._debug = d;
   }
   get breakpoint() {
     return this._breakpoint;
@@ -208,8 +219,8 @@ export class Layout {
     this._minRowHeight = mrh;
     this.updateDashItems();
   }
-  get rowHeight() {
-    let rH = 0;
+  get rowHeight(): number {
+    let rH;
     if (typeof this._rowHeight == "number") {
       rH = this._rowHeight;
     } else {
@@ -227,11 +238,10 @@ export class Layout {
     }
     return rH;
   }
-  set rowHeight(rh: number) {
-    this._rowHeight = rh;
+  set rowHeight(rh: number | boolean) {
+    this._rowHeight = rh || 0;
     this.updateDashItems();
   }
-
   set maxColWidth(mcw: boolean | number) {
     this._maxColWidth = mcw;
     this.updateDashItems();
@@ -250,7 +260,7 @@ export class Layout {
     this._colWidth = cw;
   }
   get colWidth() {
-    let colWidthCalc = 0;
+    let colWidthCalc;
     if (typeof this._colWidth == "number") {
       colWidthCalc = this._colWidth;
     } else {
@@ -315,53 +325,56 @@ export class Layout {
   calculateHeight() {
     let maxY = 0;
     let bottomY = 0;
-    for (let item of this._dashItems) {
+    for (const item of this._dashItems) {
       bottomY = item.y + item.height;
       if (bottomY > maxY) {
         maxY = bottomY;
       }
     }
-    return maxY * (this.rowHeight + this.margin.y) + this.margin.y;
+    return (
+      maxY * ((this.rowHeight ? this.rowHeight : 0) + this.margin.y) +
+      this.margin.y
+    );
   }
   //DashItem Methods
   addDashItem(d: DashItem) {
     this._dashItems.push(d);
     this.updateDashItems();
     //Drag Subscriptions
-    let unDragStart = d.onMoveStart.subscribe((item) => {
+    const unDragStart = d.onMoveStart.subscribe((item) => {
       this.itemDragging(item);
     });
     this._dragStartListeners.push({
       id: d.id,
       unsubscribe: unDragStart,
     });
-    let unDrag = d.onMove.subscribe((item) => {
+    const unDrag = d.onMove.subscribe((item) => {
       this.itemDragging(item);
     });
     this._dragListeners.push({
       id: d.id,
       unsubscribe: unDrag,
     });
-    let unDragEnd = d.onMoveEnd.subscribe((item) => {
+    const unDragEnd = d.onMoveEnd.subscribe((item) => {
       this.itemDraggingComplete(item);
     });
     this._dragEndListeners.push({ id: d.id, unsubscribe: unDragEnd });
-    //Resize Subscirptions
-    let unResizeStart = d.onResizeStart.subscribe((item) => {
+    //Resize Subscriptions
+    const unResizeStart = d.onResizeStart.subscribe((item) => {
       this.itemResizing(item);
     });
     this._resizeStartListeners.push({
       id: d.id,
       unsubscribe: unResizeStart,
     });
-    let unResize = d.onResize.subscribe((item) => {
+    const unResize = d.onResize.subscribe((item) => {
       this.itemResizing(item);
     });
     this._resizeListeners.push({
       id: d.id,
       unsubscribe: unResize,
     });
-    let unResizeEnd = d.onResizeEnd.subscribe((item) => {
+    const unResizeEnd = d.onResizeEnd.subscribe((item) => {
       this.itemResizingComplete(item);
     });
     this._resizeEndListeners.push({
@@ -371,8 +384,8 @@ export class Layout {
 
     //Check that the added item has not caused a collision and if so move the others.
     //Only do this on items added after initialisation
-    if (!this._initalItemIds.includes(d.id)) {
-      let items = this.compactLayout(this.items);
+    if (!this._initialItemIds.includes(d.id)) {
+      const items = this.compactLayout(this.items);
       this.syncItems(items);
     }
   }
@@ -383,7 +396,7 @@ export class Layout {
     if (index >= 0) {
       this._dashItems.splice(index, 1);
     }
-    //Remove Event Listerners
+    //Remove Event Listeners
     index = this._dragStartListeners.findIndex((item) => {
       return item.id === d.id;
     });
@@ -405,7 +418,7 @@ export class Layout {
       this._dragEndListeners[index].unsubscribe();
       this._dragEndListeners.splice(index, 1);
     }
-    //Remove Drag Listerners
+    //Remove Drag Listeners
     index = this._resizeStartListeners.findIndex((item) => {
       return item.id === d.id;
     });
@@ -428,19 +441,18 @@ export class Layout {
       this._resizeEndListeners.splice(index, 1);
     }
     //Remove from initial Item Id check if it existed. This way the item can be added again and compacted
-    let initialItemIdIndex = this._initalItemIds.findIndex((id) => {
-      id === d.id;
-    });
+    const doesIndexMatch = (id: number | string) => id === d.id;
+    const initialItemIdIndex = this._initialItemIds.findIndex(doesIndexMatch);
     if (initialItemIdIndex > -1) {
-      this._initalItemIds.splice(initialItemIdIndex, 1);
+      this._initialItemIds.splice(initialItemIdIndex, 1);
     }
 
     //Compact layout after removal
-    let items = this.compactLayout(this.items);
+    const items = this.compactLayout(this.items);
     this.syncItems(items);
   }
   getDashItemById(id: string | number) {
-    let index = this._dashItems.findIndex((item) => {
+    const index = this._dashItems.findIndex((item) => {
       return item.id === id;
     });
     if (index >= 0) {
@@ -457,7 +469,7 @@ export class Layout {
   }
   //Item Methods
   get items() {
-    let items: Item[] = [];
+    const items: Item[] = [];
     this._dashItems.forEach((dashItem) => {
       items.push(dashItem.toItem());
     });
@@ -471,13 +483,16 @@ export class Layout {
       this.placeholder!.height = item.height;
       this.itemBeingDragged = true;
     }
+    this.itemCopyAndReplaceWithPlaceholder(item);
+  }
+  itemCopyAndReplaceWithPlaceholder(item: Item) {
     //Take a copy of items
-    let itemsCopy = JSON.parse(JSON.stringify(this.items)) as Item[];
+    const itemsCopy = JSON.parse(JSON.stringify(this.items)) as Item[];
     //Remove the item being dragged as the placeholder takes its place. Otherwise the item will snap while being dragged.
     let items = itemsCopy.filter((i) => {
       return i.id !== item.id;
     });
-    let placeholderIndex = items.findIndex((i) => {
+    const placeholderIndex = items.findIndex((i) => {
       return i.id === this.placeholder!.id;
     });
     //items = this.correctBounds(items);
@@ -493,7 +508,7 @@ export class Layout {
   }
   itemDraggingComplete(item: Item) {
     this.itemBeingDragged = false;
-    let dashItem = this.getDashItemById(item.id);
+    const dashItem = this.getDashItemById(item.id);
     if (dashItem) {
       dashItem.x = this.placeholder!.x;
       dashItem.y = this.placeholder!.y;
@@ -529,28 +544,11 @@ export class Layout {
       this.rowHeight,
       this.margin
     );
-    //Take a copy of items
-    let itemsCopy = JSON.parse(JSON.stringify(this.items)) as Item[];
-    //Remove the item being resized as the placeholder takes its place. Otherwise the item will snap while being resized.
-    let items = itemsCopy.filter((i) => {
-      return i.id !== item.id;
-    });
-    let placeholderIndex = items.findIndex((i) => {
-      return i.id === this.placeholder!.id;
-    });
-    items = this.moveItem(
-      items,
-      items[placeholderIndex],
-      DashItem.getXFromLeft(item.left!, this.colWidth as number, this.margin),
-      DashItem.getYFromTop(item.top!, this.rowHeight, this.margin),
-      true
-    );
-    items = this.compactLayout(items);
-    this.syncItems(items);
+    this.itemCopyAndReplaceWithPlaceholder(item);
   }
   itemResizingComplete(item: Item) {
     this.itemBeingResized = false;
-    let dashItem = this.getDashItemById(item.id);
+    const dashItem = this.getDashItemById(item.id);
     if (dashItem) {
       dashItem.x = this.placeholder!.x;
       dashItem.y = this.placeholder!.y;
@@ -566,23 +564,19 @@ export class Layout {
   checkForCollision(d1: Item, d2: Item) {
     if (d1.id === d2.id) {
       return false;
-    }
-    if (d1.x + d1.width <= d2.x) {
+    } else if (d1.x + d1.width <= d2.x) {
       return false;
-    }
-    if (d1.x >= d2.x + d2.width) {
+    } else if (d1.x >= d2.x + d2.width) {
       return false;
-    }
-    if (d1.y + d1.height <= d2.y) {
+    } else if (d1.y + d1.height <= d2.y) {
       return false;
-    }
-    if (d1.y >= d2.y + d2.height) {
+    } else if (d1.y >= d2.y + d2.height) {
       return false;
     }
     return true;
   }
   getFirstCollision(items: Item[], d: Item) {
-    for (let i of items) {
+    for (const i of items) {
       if (this.checkForCollision(d, i)) {
         return i;
       }
@@ -616,7 +610,7 @@ export class Layout {
     return items;
   }
   getLockedItems(items: Item[]) {
-    return this.items.filter((item) => item.locked);
+    return items.filter((item) => item.locked);
   }
   compactLayout(items: Item[]) {
     const sorted = this.sortItems(items);
@@ -632,7 +626,7 @@ export class Layout {
       }
 
       // Add to output array to make sure they still come out in the right order.
-      let index = items.findIndex((item) => {
+      const index = items.findIndex((item) => {
         return item.id === l.id;
       });
       out[index] = l;
@@ -654,7 +648,7 @@ export class Layout {
     return d;
   }
   sortItems(items: Item[], reverse?: Boolean) {
-    let i = JSON.parse(JSON.stringify(items)) as Item[];
+    const i = JSON.parse(JSON.stringify(items)) as Item[];
     i.sort((a, b) => {
       if (a.y > b.y || (a.y === b.y && a.x > b.x)) {
         return 1;
@@ -683,7 +677,7 @@ export class Layout {
     d = this.correctItemBounds(d);
     const sorted = this.sortItems(items, movingUp);
     const collisions = this.getAllCollisions(sorted, d);
-    for (let collision of collisions) {
+    for (const collision of collisions) {
       if (collision.moved) {
         continue;
       }
@@ -691,7 +685,7 @@ export class Layout {
       if (d.y > collision.y && d.y - collision.y > collision.height / 4) {
         continue;
       }
-      let collisionIndex = items.findIndex((item) => {
+      const collisionIndex = items.findIndex((item) => {
         return item.id === collision.id;
       });
       if (collision.locked) {
@@ -714,7 +708,7 @@ export class Layout {
   }
   moveItemFromCollision(
     items: Item[],
-    colllidesWith: Item,
+    collidesWith: Item,
     itemToMove: Item,
     isUserAction?: Boolean
   ) {
@@ -730,7 +724,7 @@ export class Layout {
         maxHeight: itemToMove.maxHeight,
         minHeight: itemToMove.minHeight,
       };
-      fakeItem.y = Math.max(colllidesWith.y - itemToMove.height, 0);
+      fakeItem.y = Math.max(collidesWith.y - itemToMove.height, 0);
       if (!this.getFirstCollision(items, fakeItem)) {
         return this.moveItem(items, itemToMove, itemToMove.x, fakeItem.y);
       }
@@ -739,7 +733,7 @@ export class Layout {
   }
   syncItems(items: Item[]) {
     items.forEach((i) => {
-      let dashItem = this.getDashItemById(i.id);
+      const dashItem = this.getDashItemById(i.id);
       dashItem!.fromItem(i);
     });
   }

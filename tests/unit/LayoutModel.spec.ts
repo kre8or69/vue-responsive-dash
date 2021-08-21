@@ -1,4 +1,4 @@
-import { Layout } from "../../src/components/Layout.model";
+import { Layout } from "@/components/Layout.model";
 
 let layoutOptions = {
   breakpoint: "1",

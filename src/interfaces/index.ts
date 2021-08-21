@@ -21,7 +21,7 @@ export interface Item {
 export interface Breakpoint {
   name: string;
   numberOfCols: number;
-  setpoint?: number;
+  setPoint?: number;
 }
 
 export interface Margin {

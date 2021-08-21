@@ -1,6 +1,7 @@
 import { SimpleEventDispatcher } from "ste-simple-events";
-import { Margin, Item } from "../interfaces";
+import { Item, Margin } from "../interfaces";
 import { ResizeEvent } from "@interactjs/types";
+
 export class DashItem {
   private readonly _id: number | string;
   private _x: number;
@@ -392,7 +393,7 @@ export class DashItem {
     this._locked = l;
   }
   toItem() {
-    let item = {
+    return {
       id: this.id,
       x: this.x,
       y: this.y,
@@ -410,7 +411,6 @@ export class DashItem {
       resizable: this.resizable,
       locked: this.locked,
     } as Item;
-    return item;
   }
   fromItem(item: Item) {
     this._x = item.x;
@@ -493,7 +493,7 @@ export class DashItem {
     return Math.round((heightPx + margin.y) / (rowHeight + margin.y));
   }
   static get defaults() {
-    let defaults: Item = {
+    const defaults: Item = {
       id: "",
       x: 0,
       y: 0,

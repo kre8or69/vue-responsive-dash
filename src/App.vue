@@ -4,10 +4,11 @@
       :id="'dashTest'"
       @currentBreakpointUpdated="updateCurrentBreakpoint"
     >
-      <Dash-Layout
+      <DashLayout
         v-for="layout in layouts"
         :key="layout.breakpoint"
         v-bind="layout"
+        :breakpoint="layout.breakpoint"
         :rowHeight="rowHeight"
         :colWidth="colWidth"
         :maxColWidth="maxColWidth"
@@ -18,7 +19,7 @@
         :margin="margin"
         :debug="true"
       >
-        <Dash-Item
+        <DashItem
           v-for="item in layout.items"
           :id.sync="item.id"
           :x.sync="item.x"
@@ -39,11 +40,11 @@
             <div class="dragHandle"></div>
             <div class="dragHandle2"></div>
           </div>
-        </Dash-Item>
+        </DashItem>
         <template v-slot:placeholder>
           <div class="placeholderTest"></div>
         </template>
-      </Dash-Layout>
+      </DashLayout>
     </dashboard>
     Current Breakpoint:
     {{ currentBreakpoint }} <br />
@@ -79,11 +80,12 @@
 </template>
 
 <script>
-import Vue from "vue";
+import { defineComponent } from "vue";
 import DashItem from "./components/DashItem.vue";
 import DashLayout from "./components/DashLayout.vue";
 import Dashboard from "./components/Dashboard.vue";
-export default {
+
+export default defineComponent({
   name: "app",
   components: {
     DashItem,
@@ -103,14 +105,9 @@ export default {
         {
           breakpoint: "xl",
           numberOfCols: 12,
+          breakpointWidth: 1280,
           items: [
-            {
-              id: "1",
-              x: 0,
-              y: 0,
-              width: 1,
-              height: 1,
-            },
+            { id: "1", x: 0, y: 0, width: 1, height: 1 },
             { id: "2", x: 1, y: 0, width: 2, height: 1 },
             { id: "3", x: 0, y: 1, width: 2, height: 1 },
             { id: "4", x: 3, y: 0, width: 2, height: 2 },
@@ -121,16 +118,10 @@ export default {
         },
         {
           breakpoint: "lg",
-          breakpointWidth: 1200,
+          breakpointWidth: 1024,
           numberOfCols: 10,
           items: [
-            {
-              id: "1",
-              x: 0,
-              y: 0,
-              width: 1,
-              height: 1,
-            },
+            { id: "1", x: 0, y: 0, width: 1, height: 1 },
             { id: "2", x: 1, y: 0, width: 2, height: 1 },
             { id: "3", x: 0, y: 1, width: 2, height: 1, locked: true },
             { id: "4", x: 3, y: 0, width: 2, height: 2 },
@@ -141,16 +132,10 @@ export default {
         },
         {
           breakpoint: "md",
-          breakpointWidth: 996,
+          breakpointWidth: 768,
           numberOfCols: 8,
           items: [
-            {
-              id: "1",
-              x: 0,
-              y: 0,
-              width: 1,
-              height: 1,
-            },
+            { id: "1", x: 0, y: 0, width: 1, height: 1 },
             { id: "2", x: 1, y: 0, width: 2, height: 1 },
             { id: "3", x: 0, y: 1, width: 2, height: 1 },
             { id: "4", x: 3, y: 0, width: 2, height: 2 },
@@ -161,16 +146,10 @@ export default {
         },
         {
           breakpoint: "sm",
-          breakpointWidth: 768,
+          breakpointWidth: 640,
           numberOfCols: 4,
           items: [
-            {
-              id: "1",
-              x: 0,
-              y: 0,
-              width: 1,
-              height: 1,
-            },
+            { id: "1", x: 0, y: 0, width: 1, height: 1 },
             { id: "2", x: 1, y: 0, width: 2, height: 1 },
             { id: "3", x: 0, y: 1, width: 2, height: 1 },
             { id: "4", x: 3, y: 0, width: 1, height: 2 },
@@ -179,44 +158,12 @@ export default {
         },
         {
           breakpoint: "xs",
-          breakpointWidth: 480,
+          breakpointWidth: 0,
           numberOfCols: 2,
           items: [
-            {
-              id: "1",
-              x: 0,
-              y: 0,
-              width: 1,
-              height: 1,
-            },
+            { id: "1", x: 0, y: 0, width: 1, height: 1 },
             { id: "2", x: 1, y: 0, width: 1, height: 1 },
             { id: "3", x: 0, y: 1, width: 2, height: 1 },
-          ],
-        },
-        {
-          breakpoint: "xxs",
-          breakpointWidth: 0,
-          numberOfCols: 1,
-          items: [
-            {
-              id: "1",
-              x: 0,
-              y: 0,
-              width: 1,
-              height: 1,
-            },
-            { id: "2", x: 0, y: 1, width: 1, height: 1 },
-          ],
-        },
-      ],
-      dlayouts: [
-        {
-          breakpoint: "xl",
-          numberOfCols: 12,
-          items: [
-            { id: "1", x: 6, y: 3, width: 6, height: 3 },
-            { id: "2", x: 9, y: 0, width: 3, height: 3 },
-            { id: "3", x: 0, y: 0, width: 8, height: 3 },
           ],
         },
       ],
@@ -308,7 +255,7 @@ export default {
       this.currentBreakpoint = val;
     },
   },
-};
+});
 </script>
 
 <style>

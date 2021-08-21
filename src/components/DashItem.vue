@@ -1,7 +1,7 @@
 <template>
   <div
     :id="'item_' + id"
-    ref="item"
+    ref="itemElement"
     class="item"
     :style="cssStyle"
     :class="classObj"
@@ -156,41 +156,25 @@
   </div>
 </template>
 
-<script>
-import "@interactjs/actions";
-import "@interactjs/auto-start";
-import interact from "@interactjs/interact";
+<script lang="ts">
+import interact from "interactjs";
 
 import { DashItem } from "./DashItem.model";
 import { Layout as layoutModel } from "./Layout.model";
+import {
+  defineComponent,
+  provide,
+  inject,
+  ref,
+  reactive,
+  watch,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+} from "vue";
+import { Interactable } from "@interactjs/types";
 
-//Monitor the Props and update the item with the changed value
-const watchProp = (key, deep) => ({
-  handler(newValue) {
-    //If the prop did not cause the update there is no updating
-    if (this.item[key] === newValue) {
-      return;
-    }
-    this.item[key] = newValue;
-  },
-  deep,
-});
-
-//Props to change via interaction and need to be emitted for prop.sync usage
-const EMIT_PROPS = ["x", "y", "width", "height"];
-//Monitor the item and emit an update to allow .sync usage
-const watchEmitProp = (key, deep) => ({
-  handler(newValue) {
-    //If the prop caused the update there is no point emitting it back
-    if (this.$props[key] === newValue) {
-      return;
-    }
-    this.$emit("update:" + key, newValue);
-  },
-  deep,
-});
-
-export default {
+export default defineComponent({
   name: "DashItem",
   inheritAttrs: false,
   props: {
@@ -213,153 +197,140 @@ export default {
     resizable: { type: Boolean, default: DashItem.defaults.resizable },
     resizeEdges: { type: String, default: "bottom right" },
     resizeHandleSize: { type: Number, default: 8 },
-    draggableZIndex: { type: Number, default: 1 }, //TODO remove
-    resizableZIndex: { type: Number, default: 1 }, //TODO consider removing
+    draggableZIndex: { type: Number, default: 1 },
+    resizableZIndex: { type: Number, default: 1 },
     moveHold: { type: Number, default: 0 },
     resizeHold: { type: Number, default: 0 },
     dragAllowFrom: { type: String, default: null },
     dragIgnoreFrom: { type: String, default: null },
     locked: { type: Boolean, default: DashItem.defaults.locked },
   },
-  inject: { $layout: { default: null } },
-  provide() {
-    return {
-      $item: () => this.item,
-    };
-  },
-  data() {
-    return {
-      interactInstance: null,
-      item: null,
-      dragging: false,
-      resizing: false,
-      unWatch: null,
-      hover: false,
-    };
-  },
-  computed: {
-    resizingOrDragging() {
-      return (this.resizing || this.dragging) && !this.locked;
-    },
-    classObj() {
-      return {
-        dragging: this.resizingOrDragging,
-        cssTransforms: this.useCssTransforms,
-      };
-    },
-    layout() {
-      if (this.$layout) {
-        return this.$layout();
-      }
-      return null;
-    },
-    useCssTransforms() {
-      if (this.layout) {
-        return this.layout.useCssTransforms;
-      }
-      return layoutModel.default.useCssTransforms;
-    },
-    left() {
-      if (this.item) {
-        return this.item.left;
-      }
-      return 0;
-    },
-    top() {
-      if (this.item) {
-        return this.item.top;
-      }
-      return 0;
-    },
-    widthPx() {
-      if (this.item) {
-        return this.item.widthPx;
-      }
-      return 0;
-    },
-    heightPx() {
-      if (this.item) {
-        return this.item.heightPx;
-      }
-      return 0;
-    },
-    cssStyle() {
-      if (this.useCssTransforms) {
-        return DashItem.cssTransform(
-          this.top,
-          this.left,
-          this.widthPx,
-          this.heightPx
-        );
+  setup(props, { emit }) {
+    const itemElement = ref(); //This is the template ref we use for the element
+    const item = reactive(new DashItem(props)) as DashItem;
+    provide("$item", item);
+
+    watch(props, (newPropValue) => {
+      item.x = newPropValue.x;
+      item.y = newPropValue.y;
+      item.width = newPropValue.width;
+      item.minWidth = newPropValue.minWidth;
+      item.maxWidth = newPropValue.maxWidth;
+      item.height = newPropValue.height;
+      item.minHeight = newPropValue.minHeight;
+      item.maxHeight = newPropValue.maxHeight;
+      item.draggable = newPropValue.draggable;
+      item.resizeEdges = newPropValue.resizeEdges;
+      item.resizeHandleSize = newPropValue.resizeHandleSize;
+      item.moveHold = newPropValue.moveHold;
+      item.resizeHold = newPropValue.resizeHold;
+      item.locked = newPropValue.locked;
+    });
+
+    const layout = inject("$layout") as layoutModel;
+
+    let interactInstance: Interactable;
+
+    const addWatchersToLayout = () => {
+      //Check if layout exists and if not then start a watcher
+      if (layout) {
+        layout.addDashItem(item);
+        createDashItemWatchers();
       } else {
-        return DashItem.cssTopLeft(
-          this.top,
-          this.left,
-          this.widthPx,
-          this.heightPx
-        );
+        const unWatch = watch(layout, (newValue: layoutModel | undefined) => {
+          if (newValue) {
+            newValue.addDashItem(item);
+            createDashItemWatchers();
+            unWatch();
+          }
+        });
       }
-    },
-    resizeTop() {
-      return !this.locked && this.resizable && this.resizeEdges.includes("top");
-    },
-    resizeBottom() {
-      return (
-        !this.locked && this.resizable && this.resizeEdges.includes("bottom")
+    };
+
+    onMounted(() => {
+      interactInstance = interact(itemElement.value);
+      setDraggable();
+      setResizable();
+      addWatchersToLayout();
+    });
+    onBeforeUnmount(() => {
+      if (interactInstance) {
+        interactInstance.unset();
+      }
+      if (layout) {
+        layout.removeDashItem(item);
+      }
+    });
+
+    const createDashItemWatchers = () => {
+      watch(
+        [() => item.x, () => item.y, () => item.width, () => item.height],
+        ([
+          newItemXValue,
+          newItemYValue,
+          newItemWidthValue,
+          newItemHeightValue,
+        ]) => {
+          if (newItemXValue !== props.x) {
+            emit("update:x", newItemXValue);
+          }
+          if (newItemYValue !== props.y) {
+            emit("update:y", newItemYValue);
+          }
+          if (newItemWidthValue !== props.width) {
+            emit("update:width", newItemWidthValue);
+          }
+          if (newItemHeightValue !== props.height) {
+            emit("update:height", newItemHeightValue);
+          }
+        }
       );
-    },
-    resizeLeft() {
-      return (
-        !this.locked && this.resizable && this.resizeEdges.includes("left")
-      );
-    },
-    resizeRight() {
-      return (
-        !this.locked && this.resizable && this.resizeEdges.includes("right")
-      );
-    },
-    resizeTopLeft() {
-      return !this.locked && this.resizeTop && this.resizeLeft;
-    },
-    resizeBottomLeft() {
-      return !this.locked && this.resizeBottom && this.resizeLeft;
-    },
-    resizeTopRight() {
-      return !this.locked && this.resizeTop && this.resizeRight;
-    },
-    resizeBottomRight() {
-      return !this.locked && this.resizeBottom && this.resizeRight;
-    },
-  },
-  methods: {
-    setDraggable() {
-      if (this.draggable && !this.locked) {
-        this.interactInstance.draggable({
+    };
+
+    const dragging = ref(false);
+    const setDraggable = () => {
+      if (!interactInstance) {
+        return;
+      }
+      if (props.draggable && !props.locked) {
+        interactInstance.draggable({
           enabled: true,
-          hold: this.moveHold,
-          allowFrom: this.dragAllowFrom,
-          ignoreFrom: this.dragIgnoreFrom,
+          hold: props.moveHold,
+          allowFrom: props.dragAllowFrom,
+          ignoreFrom: props.dragIgnoreFrom,
           listeners: {
-            start: (event) => {
-              this.onMoveStart(event);
+            start: () => {
+              dragging.value = true;
+              item._onMoveStart();
+              emit("moveStart", { ...item.toItem() });
             },
             move: (event) => {
-              this.onMove(event);
+              if (dragging) {
+                item._onMove(event.dx, event.dy);
+                emit("moving", { ...item.toItem() });
+              }
             },
-            end: (event) => {
-              this.onMoveEnd(event);
+            end: () => {
+              item._onMoveEnd();
+              dragging.value = false;
+              emit("moveEnd", { ...item.toItem() });
             },
           },
         });
       } else {
-        this.interactInstance.draggable(false);
+        interactInstance.draggable(false);
       }
-    },
-    setResizable() {
-      if (this.resizable && !this.locked) {
-        this.interactInstance.resizable({
+    };
+
+    const resizing = ref(false);
+    const setResizable = () => {
+      if (!interactInstance) {
+        return;
+      }
+      if (props.resizable && !props.locked) {
+        interactInstance.resizable({
           enabled: true,
-          hold: this.resizeHold,
+          hold: props.resizeHold,
           edges: {
             top: ".resize-top",
             left: ".resize-left",
@@ -367,134 +338,156 @@ export default {
             right: ".resize-right",
           },
           listeners: {
-            start: (event) => {
-              this.onResizeStart(event);
+            start: () => {
+              resizing.value = true;
+              item._onResizeStart();
+              emit("resizeStart", { ...item.toItem() });
             },
             move: (event) => {
-              this.onResize(event);
+              if (resizing) {
+                item._onResize(event);
+                emit("resizing", { ...item.toItem() });
+              }
             },
-            end: (event) => {
-              this.onResizeEnd(event);
+            end: () => {
+              item._onResizeEnd();
+              resizing.value = false;
+              emit("resizeEnd", { ...item.toItem() });
             },
           },
         });
       } else {
-        this.interactInstance.resizable(false);
+        interactInstance.resizable(false);
       }
-    },
-    onMoveStart(e) {
-      this.dragging = true;
-      this.item._onMoveStart();
-      this.$emit("moveStart", { ...this.item.toItem() });
-    },
-    onMove(event) {
-      if (this.dragging) {
-        this.item._onMove(event.dx, event.dy);
-        this.$emit("moving", { ...this.item.toItem() });
-      }
-    },
-    onMoveEnd(e) {
-      this.item._onMoveEnd();
-      this.dragging = false;
-      this.$emit("moveEnd", { ...this.item.toItem() });
-    },
-    onResizeStart(e) {
-      this.resizing = true;
-      this.item._onResizeStart();
-      this.$emit("resizeStart", { ...this.item.toItem() });
-    },
-    onResize(e) {
-      if (this.resizing) {
-        this.item._onResize(e);
-        this.$emit("resizing", { ...this.item.toItem() });
-      }
-    },
-    onResizeEnd(e) {
-      this.item._onResizeEnd();
-      this.resizing = false;
-      this.$emit("resizeEnd", { ...this.item.toItem() });
-    },
-    createPropWatchers() {
-      //Setup prop watches to sync with the Dash Item
-      Object.keys(this.$props).forEach((key) => {
-        this.$watch(key, watchProp(key, true));
-      });
-    },
-    createDashItemWatchers() {
-      //Setup Watchers for emmit sync option
-      EMIT_PROPS.forEach((prop) => {
-        this.$watch("item." + prop, watchEmitProp(prop, true));
-      });
-    },
-  },
-  watch: {
-    hover(newValue) {
-      this.item.hover = newValue;
+    };
+
+    const hover = ref(false);
+    watch(hover, (newValue) => {
+      item.hover = newValue;
       if (newValue) {
-        this.$emit("hoverStart", this.item);
+        emit("hoverStart", item);
       } else {
-        this.$emit("hovenEnd", this.item);
+        emit("hoverEnd", item);
       }
-    },
-    draggable() {
-      this.setDraggable();
-    },
-    resizable() {
-      this.setResizable();
-    },
-    locked() {
-      this.setDraggable();
-      this.setResizable();
-    },
-    moveHold() {
-      this.setDraggable();
-    },
-    resizeHold() {
-      this.setResizable();
-    },
-    dragAllowFrom() {
-      this.setDraggable();
-    },
-    dragIgnoreFrom() {
-      this.setDraggable();
-    },
-  },
-  mounted() {
-    this.item = new DashItem(this.$props);
+    });
 
-    this.interactInstance = interact(this.$refs.item);
-    this.setDraggable();
-    this.setResizable();
+    watch(
+      [
+        () => props.draggable,
+        () => props.moveHold,
+        () => props.dragIgnoreFrom,
+        () => props.dragAllowFrom,
+      ],
+      () => setDraggable()
+    );
+    watch([() => props.resizable, () => props.resizeHold], () =>
+      setResizable()
+    );
+    watch(
+      () => props.locked,
+      () => {
+        setDraggable();
+        setResizable();
+      }
+    );
+    const resizingOrDragging = computed((): boolean => {
+      return (resizing.value || dragging.value) && !props.locked;
+    });
+    const useCssTransforms = computed((): boolean => {
+      if (layout) {
+        return layout.useCssTransforms;
+      }
+      return layoutModel.defaults.useCssTransforms;
+    });
 
-    //Check if layout exists and if not then start a watcher
-    if (this.layout) {
-      this.layout.addDashItem(this.item);
-      this.createPropWatchers();
-      this.createDashItemWatchers();
-    } else {
-      this.unWatch = this.$watch(
-        "layout",
-        function (newValue) {
-          if (newValue) {
-            this.layout.addDashItem(this.item);
-            this.createPropWatchers();
-            this.createDashItemWatchers();
-            this.unWatch();
-          }
-        },
-        { immediate: true }
+    const classObj = computed((): object => {
+      return {
+        dragging: resizingOrDragging.value,
+        cssTransforms: useCssTransforms.value,
+      };
+    });
+
+    const left = computed((): number => {
+      return item ? item.left : 0;
+    });
+    const top = computed((): number => {
+      return item ? item.top : 0;
+    });
+    const widthPx = computed((): number => {
+      return item ? item.widthPx : 0;
+    });
+    const heightPx = computed((): number => {
+      return item ? item.heightPx : 0;
+    });
+    const cssStyle = computed((): object => {
+      if (useCssTransforms.value) {
+        return DashItem.cssTransform(
+          top.value,
+          left.value,
+          widthPx.value,
+          heightPx.value
+        );
+      }
+      return DashItem.cssTopLeft(
+        top.value,
+        left.value,
+        widthPx.value,
+        heightPx.value
       );
-    }
+    });
+    const resizeTop = computed((): boolean => {
+      return (
+        !props.locked && props.resizable && props.resizeEdges.includes("top")
+      );
+    });
+    const resizeBottom = computed((): boolean => {
+      return (
+        !props.locked && props.resizable && props.resizeEdges.includes("bottom")
+      );
+    });
+    const resizeLeft = computed((): boolean => {
+      return (
+        !props.locked && props.resizable && props.resizeEdges.includes("left")
+      );
+    });
+    const resizeRight = computed((): boolean => {
+      return (
+        !props.locked && props.resizable && props.resizeEdges.includes("right")
+      );
+    });
+    const resizeTopLeft = computed((): boolean => {
+      return !props.locked && resizeTop.value && resizeLeft.value;
+    });
+    const resizeBottomLeft = computed((): boolean => {
+      return !props.locked && resizeBottom.value && resizeLeft.value;
+    });
+    const resizeTopRight = computed((): boolean => {
+      return !props.locked && resizeTop.value && resizeRight.value;
+    });
+    const resizeBottomRight = computed((): boolean => {
+      return !props.locked && resizeBottom.value && resizeRight.value;
+    });
+
+    return {
+      itemElement,
+      hover,
+      classObj,
+      left,
+      top,
+      widthPx,
+      heightPx,
+      cssStyle,
+      resizeTop,
+      resizeBottom,
+      resizeLeft,
+      resizeRight,
+      resizeTopLeft,
+      resizeBottomLeft,
+      resizeTopRight,
+      resizeBottomRight,
+    };
   },
-  beforeDestroy() {
-    if (this.interactInstance) {
-      this.interactInstance.unset();
-    }
-    if (this.layout) {
-      this.layout.removeDashItem(this.item);
-    }
-  },
-};
+});
 </script>
 
 <style scoped>

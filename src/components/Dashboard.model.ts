@@ -1,4 +1,4 @@
-import { Breakpoint } from "../interfaces";
+import { Breakpoint } from "@/interfaces";
 import { Layout } from "./Layout.model";
 
 export class Dashboard {
@@ -34,22 +34,22 @@ export class Dashboard {
     return this._id;
   }
   get breakpoints() {
-    let bp: Breakpoint[] = [];
-    for (let layout of this._layouts) {
+    const bp: Breakpoint[] = [];
+    for (const layout of this._layouts) {
       bp.push({
         name: layout.breakpoint,
         numberOfCols: layout.numberOfCols,
-        setpoint: layout.breakpointWidth,
+        setPoint: layout.breakpointWidth,
       });
     }
     bp.sort((a, b) => {
       if (
-        typeof a.setpoint !== "undefined" &&
-        typeof b.setpoint !== "undefined"
+        typeof a.setPoint !== "undefined" &&
+        typeof b.setPoint !== "undefined"
       ) {
-        return +a.setpoint - +b.setpoint;
+        return +a.setPoint - +b.setPoint;
       }
-      if (typeof a.setpoint == "undefined") {
+      if (typeof a.setPoint == "undefined") {
         return 1;
       }
       return -1;
@@ -87,8 +87,8 @@ export class Dashboard {
     //let previousBreakpoint = this.currentBreakpoint;
     let matching = this.breakpoints[0].name;
     for (let i = 1; i < this.breakpoints.length; i++) {
-      if (typeof this.breakpoints[i].setpoint !== undefined) {
-        if (this.width > this.breakpoints[i].setpoint!) {
+      if (typeof this.breakpoints[i].setPoint !== undefined) {
+        if (this.width > this.breakpoints[i].setPoint!) {
           matching = this.breakpoints[i].name;
         }
       }
@@ -98,12 +98,12 @@ export class Dashboard {
   sortBreakpoints() {
     this.breakpoints.sort((a, b) => {
       if (
-        typeof a.setpoint !== "undefined" &&
-        typeof b.setpoint !== "undefined"
+        typeof a.setPoint !== "undefined" &&
+        typeof b.setPoint !== "undefined"
       ) {
-        return +a.setpoint - +b.setpoint;
+        return +a.setPoint - +b.setPoint;
       }
-      if (typeof a.setpoint == "undefined") {
+      if (typeof a.setPoint == "undefined") {
         return 1;
       }
       return -1;
@@ -118,7 +118,7 @@ export class Dashboard {
     });
   }
   removeLayoutInstance(l: Layout) {
-    let index = this.layouts.findIndex((layout) => {
+    const index = this.layouts.findIndex((layout) => {
       return l.breakpoint === layout.breakpoint;
     });
     if (index >= 0) {

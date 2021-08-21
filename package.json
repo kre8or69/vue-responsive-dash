@@ -38,38 +38,37 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@interactjs/types": "^1.9.20",
     "@types/jest": "^26.0.10",
+    "@typescript-eslint/eslint-plugin": "^4.28.3",
+    "@typescript-eslint/parser": "^4.28.3",
     "@vue/cli-plugin-babel": "^4.5.4",
     "@vue/cli-plugin-eslint": "^4.5.4",
     "@vue/cli-plugin-typescript": "^4.5.4",
     "@vue/cli-plugin-unit-jest": "^4.5.4",
     "@vue/cli-service": "^4.5.4",
+    "@vue/compiler-sfc": "^3.1.5",
     "@vue/eslint-config-prettier": "^6.0.0",
-    "@vue/eslint-config-typescript": "^4.0.0",
-    "@vue/test-utils": "1.0.3",
+    "@vue/eslint-config-typescript": "^7.0.0",
+    "@vue/test-utils": "2.0.0-rc.10",
     "@vuepress/shared-utils": "^1.5.3",
     "core-js": "^3.6.5",
-    "eslint": "^5.16.0",
+    "eslint": "^6.8.0",
     "eslint-plugin-prettier": "^3.1.4",
-    "eslint-plugin-vue": "^6.2.2",
+    "eslint-plugin-vue": "^7.13.0",
     "prettier": "^2.0.5",
     "regenerator-runtime": "^0.13.7",
     "rimraf": "^3.0.2",
-    "typescript": "^3.9.7",
-    "vue": "^2.6.11",
-    "vue-template-compiler": "^2.6.11",
+    "typescript": "^4.3.5",
+    "vue": "^3.1.5",
     "vuepress": "^1.5.3",
     "vuepress-plugin-typescript": "^0.3.0"
   },
   "peerDependencies": {
-    "vue": "^2.6.11"
+    "vue": "^3.1.5"
   },
   "dependencies": {
-    "@interactjs/actions": "^1.9.20",
-    "@interactjs/auto-start": "^1.9.20",
-    "@interactjs/interact": "^1.9.20",
-    "ste-simple-events": "^1.6.13",
-    "vue-element-resize-detector": "^1.0.6"
+    "@interactjs/types": "^1.10.11",
+    "interactjs": "^1.10.11",
+    "ste-simple-events": "^2.1.8"
   }
 }

@@ -1,9 +1,6 @@
 <template>
   <div v-if="currentBreakpoint === breakpoint">
-    <div
-      v-if="l"
-      :style="{ position: 'relative', height: height, width: width }"
-    >
+    <div :style="{ position: 'relative', height: height, width: width }">
       <slot></slot>
       <DashItem
         :id="placeholderId"
@@ -25,33 +22,38 @@
       placeholder: {{ JSON.stringify(placeholder) }} <br />
       Items: {{ JSON.stringify(itemsFromLayout) }} <br />
       Height: {{ height }} <br />
-      Attrs: {{ $attrs }}
+      Attrs: {{ attrs }}
     </div>
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import { Layout } from "./Layout.model";
-import DashItem from "./DashItem";
+import { Dashboard as dashboardModel } from "./Dashboard.model";
+import DashItem from "./DashItem.vue";
+import {
+  defineComponent,
+  provide,
+  inject,
+  ref,
+  reactive,
+  watch,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  PropType,
+} from "vue";
+import { Margin } from "@/interfaces";
 
-//Monitor the Props and update the item with the changed value
-const watchProp = (key, deep) => ({
-  handler(newValue) {
-    //If the prop did not cause the update there is no updating
-    if (this.l[key] === newValue) {
-      return;
-    }
-    this.l[key] = newValue;
-  },
-  deep,
-});
-
-export default {
+export default defineComponent({
   name: "DashLayout",
   inheritAttrs: false,
   props: {
     breakpoint: { type: String, required: true },
-    breakpointWidth: { type: Number, default: Layout.defaults.breakpointWidth },
+    breakpointWidth: {
+      type: Number,
+      default: Layout.defaults.breakpointWidth,
+    },
     numberOfCols: { type: Number, default: Layout.defaults.numberOfCols },
     useCssTransforms: {
       type: Boolean,
@@ -59,7 +61,10 @@ export default {
     },
     compact: { type: Boolean, default: Layout.defaults.compact },
     debug: { type: Boolean, default: false },
-    margin: { type: Object, default: () => Layout.defaults.margin },
+    margin: {
+      type: Object as PropType<Margin>,
+      default: Layout.defaults.margin,
+    },
     rowHeight: {
       type: [Boolean, Number],
       default: Layout.defaults.rowHeight,
@@ -88,104 +93,94 @@ export default {
   components: {
     DashItem,
   },
-  data() {
-    return {
-      l: null,
-      placeholderId: "-1Placeholder",
-      placeholderY: 0,
-      placeholderHeight: 0,
-      placeholderMaxWidth: false,
-      unWatch: null,
-    };
-  },
-  provide() {
-    return {
-      $layout: () => this.l,
-    };
-  },
-  inject: { $dashboard: { default: null } },
-  computed: {
-    dashboard() {
-      if (this.$dashboard) {
-        return this.$dashboard();
-      }
-      return null;
-    },
-    currentBreakpoint() {
-      if (this.dashboard) {
-        return this.dashboard.currentBreakpoint;
-      }
-      return "";
-    },
-    dragging() {
-      return this.l.itemBeingDragged;
-    },
-    resizing() {
-      return this.l.itemBeingResized;
-    },
-    placeholder() {
-      if (this.l?.placeholder) {
-        return this.l.placeholder.toItem();
-      }
-      return "";
-    },
-    itemsFromLayout() {
-      if (this.l) {
-        return this.l.items;
-      }
-      return [];
-    },
-    height() {
-      if (this.l) {
-        return this.l.height + "px";
-      }
-      return "0px";
-    },
-    width() {
-      if (this.l) {
-        return this.l.width + "px";
-      }
-      return "0px";
-    },
-  },
-  methods: {
-    createPropWatchers() {
-      //Setup prop watches to sync with the Dash Item
-      Object.keys(this.$props).forEach((key) => {
-        this.$watch(key, watchProp(key, true));
-      });
-    },
-  },
-  mounted() {
-    let initialItems = [];
-    if (this.$attrs?.items) {
-      initialItems = this.$attrs.items;
-    }
-    this.l = new Layout({ ...this.$props, initialItems });
-    //Check if dashboard exists and if not then start a watcher
-    if (this.dashboard) {
-      this.dashboard.addLayoutInstance(this.l);
-      this.createPropWatchers();
-    } else {
-      this.unWatch = this.$watch(
-        "dashboard",
-        function (newValue) {
-          if (newValue) {
-            this.dashboard.addLayoutInstance(this.l);
-            this.createPropWatchers();
-            this.unWatch();
+  setup(props, { attrs }) {
+    const layout = reactive(new Layout(props)) as Layout;
+
+    provide("$layout", layout);
+
+    const dashboard = inject("$dashboard") as dashboardModel;
+
+    onMounted(() => {
+      //Check if dashboard exists and if not then start a watcher
+      if (dashboard) {
+        dashboard.addLayoutInstance(layout);
+      } else {
+        const unWatch = watch(
+          dashboard,
+          (newValue: dashboardModel | undefined) => {
+            if (newValue) {
+              newValue.addLayoutInstance(layout);
+              unWatch();
+            }
           }
-        },
-        { immediate: true }
-      );
-    }
+        );
+      }
+    });
+    onBeforeUnmount(() => {
+      if (dashboard) {
+        dashboard.removeLayoutInstance(layout);
+      }
+    });
+
+    const currentBreakpoint = computed(() => {
+      return dashboard ? dashboard.currentBreakpoint : "";
+    });
+    const dragging = computed(() => {
+      return layout ? layout.itemBeingDragged : false;
+    });
+    const resizing = computed(() => {
+      return layout ? layout.itemBeingResized : false;
+    });
+    const placeholder = computed(() => {
+      return layout?.placeholder ? layout?.placeholder?.toItem() : "";
+    });
+    const itemsFromLayout = computed(() => {
+      return layout ? layout.items : [];
+    });
+    const height = computed(() => {
+      return layout ? layout.height + "px" : "0px";
+    });
+    const width = computed(() => {
+      return layout ? layout.width + "px" : "0px";
+    });
+
+    watch(props, (newPropValue) => {
+      layout.breakpoint = newPropValue.breakpoint;
+      layout.breakpointWidth = newPropValue.breakpointWidth;
+      layout.numberOfCols = newPropValue.numberOfCols;
+      layout.useCssTransforms = newPropValue.useCssTransforms;
+      layout.compact = newPropValue.compact;
+      layout.debug = newPropValue.debug;
+      layout.margin = newPropValue.margin;
+      layout.rowHeight = newPropValue.rowHeight;
+      layout.maxRowHeight = newPropValue.maxRowHeight;
+      layout.minRowHeight = newPropValue.minRowHeight;
+      layout.colWidth = newPropValue.colWidth;
+      layout.maxColWidth = newPropValue.maxColWidth;
+      layout.minColWidth = newPropValue.minColWidth;
+    });
+
+    const placeholderId = ref("-1Placeholder");
+    const placeholderY = ref(0);
+    const placeholderHeight = ref(0);
+    const placeholderMaxWidth = ref(false);
+
+    return {
+      currentBreakpoint,
+      dragging,
+      resizing,
+      height,
+      width,
+      placeholder,
+      itemsFromLayout,
+      attrs,
+      placeholderId,
+      placeholderY,
+      placeholderHeight,
+      placeholderMaxWidth,
+    };
   },
-  beforeDestroy() {
-    if (this.dashboard) {
-      this.dashboard.removeLayoutInstance(this.l);
-    }
-  },
-};
+});
 </script>
 
 <style scoped>
