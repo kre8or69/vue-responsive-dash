@@ -37,6 +37,7 @@ import {
   inject,
   ref,
   reactive,
+  defineExpose,
   watch,
   computed,
   onMounted,

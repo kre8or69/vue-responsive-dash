@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, provide, watch, reactive } from "vue";
+import { defineComponent, provide, watch, reactive, defineExpose } from "vue";
 import { Dashboard } from "./Dashboard.model";
 import useResizeObserver from "@/use/resizeObserver";
 

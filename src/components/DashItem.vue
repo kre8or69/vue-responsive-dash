@@ -164,6 +164,7 @@ import { Layout as layoutModel } from "./Layout.model";
 import {
   defineComponent,
   provide,
+  defineExpose,
   inject,
   ref,
   reactive,
