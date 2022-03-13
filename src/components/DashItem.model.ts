@@ -1,5 +1,5 @@
 import { SimpleEventDispatcher } from "ste-simple-events";
-import { Item, Margin } from "../interfaces";
+import { Item, Margin } from "@/interfaces";
 import { ResizeEvent } from "@interactjs/types";
 
 export class DashItem {

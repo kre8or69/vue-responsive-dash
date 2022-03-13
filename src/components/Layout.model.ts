@@ -440,7 +440,7 @@ export class Layout {
       this._resizeEndListeners[index].unsubscribe();
       this._resizeEndListeners.splice(index, 1);
     }
-    //Remove from initial Item Id check if it existed. This way the item can be added again and compacted
+    //Remove from initial Item ID check if it existed. This way the item can be added again and compacted
     const doesIndexMatch = (id: number | string) => id === d.id;
     const initialItemIdIndex = this._initialItemIds.findIndex(doesIndexMatch);
     if (initialItemIdIndex > -1) {
@@ -488,7 +488,7 @@ export class Layout {
   itemCopyAndReplaceWithPlaceholder(item: Item) {
     //Take a copy of items
     const itemsCopy = JSON.parse(JSON.stringify(this.items)) as Item[];
-    //Remove the item being dragged as the placeholder takes its place. Otherwise the item will snap while being dragged.
+    //Remove the item being dragged as the placeholder takes its place, otherwise the item will snap while being dragged.
     let items = itemsCopy.filter((i) => {
       return i.id !== item.id;
     });

@@ -10,7 +10,7 @@ import { Dashboard } from "./Dashboard.model";
 import useResizeObserver from "@/use/resizeObserver";
 
 export default defineComponent({
-  name: "Dashboard",
+  name: "DashboardComponent",
   inheritAttrs: false,
   props: {
     id: { type: [Number, String], required: true },
