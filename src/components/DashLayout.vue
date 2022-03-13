@@ -37,7 +37,6 @@ import {
   inject,
   ref,
   reactive,
-  defineExpose,
   watch,
   computed,
   onMounted,
@@ -96,12 +95,7 @@ export default defineComponent({
   },
   setup(props, { attrs }) {
     const layout = reactive(new Layout(props)) as Layout;
-
     provide("$layout", layout);
-
-    defineExpose({
-      layout,
-    });
 
     const dashboard = inject("$dashboard") as dashboardModel;
 
@@ -171,6 +165,7 @@ export default defineComponent({
     const placeholderMaxWidth = ref(false);
 
     return {
+      layout,
       currentBreakpoint,
       dragging,
       resizing,

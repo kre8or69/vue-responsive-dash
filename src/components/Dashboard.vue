@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, provide, watch, reactive, defineExpose } from "vue";
+import { defineComponent, provide, watch, reactive } from "vue";
 import { Dashboard } from "./Dashboard.model";
 import useResizeObserver from "@/use/resizeObserver";
 
@@ -19,10 +19,6 @@ export default defineComponent({
   setup(props, { emit }) {
     const dashboard: Dashboard = reactive(new Dashboard(props)) as Dashboard;
     provide("$dashboard", dashboard);
-
-    defineExpose({
-      dashboard,
-    });
 
     watch(
       () => props.autoHeight,
@@ -50,6 +46,7 @@ export default defineComponent({
 
     return {
       resizeRef,
+      Dashboard,
     };
   },
 });

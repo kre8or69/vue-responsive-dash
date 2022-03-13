@@ -164,7 +164,6 @@ import { Layout as layoutModel } from "./Layout.model";
 import {
   defineComponent,
   provide,
-  defineExpose,
   inject,
   ref,
   reactive,
@@ -210,10 +209,6 @@ export default defineComponent({
     const itemElement = ref(); //This is the template ref we use for the element
     const item = reactive(new DashItem(props)) as DashItem;
     provide("$item", item);
-
-    defineExpose({
-      item,
-    });
 
     watch(props, (newPropValue) => {
       item.x = newPropValue.x;
@@ -474,6 +469,7 @@ export default defineComponent({
     });
 
     return {
+      item,
       itemElement,
       hover,
       classObj,
