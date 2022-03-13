@@ -20,6 +20,10 @@ export default defineComponent({
     const dashboard: Dashboard = reactive(new Dashboard(props)) as Dashboard;
     provide("$dashboard", dashboard);
 
+    defineExpose({
+      dashboard,
+    });
+
     watch(
       () => props.autoHeight,
       (newAutoHeightValue) => {

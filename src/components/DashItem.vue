@@ -210,6 +210,10 @@ export default defineComponent({
     const item = reactive(new DashItem(props)) as DashItem;
     provide("$item", item);
 
+    defineExpose({
+      item,
+    });
+
     watch(props, (newPropValue) => {
       item.x = newPropValue.x;
       item.y = newPropValue.y;

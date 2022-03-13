@@ -98,6 +98,10 @@ export default defineComponent({
 
     provide("$layout", layout);
 
+    defineExpose({
+      layout,
+    });
+
     const dashboard = inject("$dashboard") as dashboardModel;
 
     onMounted(() => {
